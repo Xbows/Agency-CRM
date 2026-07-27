@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 140" width="100%" height="100%">
+  <g fill="none" stroke="#58C299" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Outer Eye Outline -->
+    <path d="M 22 70 C 80 20, 220 20, 278 70 C 220 120, 80 120, 22 70 Z" />
+    
+    <!-- Letter P -->
+    <path d="M 112 36 L 112 104" />
+    <path d="M 112 36 C 158 34, 164 68, 128 78 L 112 81" />
+    
+    <!-- Letter C -->
+    <path d="M 188 48 C 155 42, 146 94, 188 88" />
+  </g>
+</svg>

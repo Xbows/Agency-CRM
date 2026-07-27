@@ -397,7 +397,7 @@ function initCharts() {
   createOutcomeChart();
   createWeeklyChart();
   createPriorityChart();
-  createMonthlyTrendChart();
+
   createOutcomeTimeChart();
 }
 
@@ -540,37 +540,7 @@ function createPriorityChart() {
   });
 }
 
-function createMonthlyTrendChart() {
-  const ctx = document.getElementById('monthlyTrendChart');
-  if (!ctx) return;
-  if (state.charts.monthly) state.charts.monthly.destroy();
-  
-  // Mock monthly data, zero out if no calls
-  const data = state.calls.length > 0 ? [12, 19, 15, 25, 22, 30] : [0, 0, 0, 0, 0, 0];
-  const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 400);
-  gradient.addColorStop(0, 'rgba(88, 194, 153, 0.5)');
-  gradient.addColorStop(1, 'rgba(88, 194, 153, 0.0)');
 
-  state.charts.monthly = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: ['Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
-      datasets: [{
-        label: 'Total Calls',
-        data: data,
-        borderColor: '#58C299',
-        backgroundColor: gradient,
-        fill: true,
-        tension: 0.4
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } }
-    }
-  });
-}
 
 function createOutcomeTimeChart() {
   const ctx = document.getElementById('outcomeTimeChart');

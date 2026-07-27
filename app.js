@@ -202,9 +202,86 @@ function showToast(message, type = 'info') {
   }, 3000);
 }
 
+// --- Supabase Setup & Auth ---
+const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
+let supabase = null;
+
+if (typeof window.supabase !== 'undefined') {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+async function checkAuth() {
+  if (!supabase || SUPABASE_URL === 'YOUR_SUPABASE_URL_HERE') return true; 
+  const { data: { session } } = await supabase.auth.getSession();
+  const authOverlay = document.getElementById('authOverlay');
+  if (session) {
+    if (authOverlay) authOverlay.classList.remove('active');
+    return true;
+  } else {
+    if (authOverlay) authOverlay.classList.add('active');
+    return false;
+  }
+}
+
+function setupAuth() {
+  const authForm = document.getElementById('authForm');
+  const toggleLink = document.getElementById('authToggleLink');
+  const toggleText = document.getElementById('authToggleText');
+  const submitBtn = document.getElementById('authSubmitBtn');
+  const signOutBtn = document.getElementById('signOutBtn');
+  
+  let isSignUp = false;
+
+  if (toggleLink) {
+    toggleLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      isSignUp = !isSignUp;
+      toggleLink.textContent = isSignUp ? 'Sign in' : 'Sign up';
+      if (toggleText) toggleText.childNodes[0].textContent = isSignUp ? 'Already have an account? ' : 'Need an account? ';
+      if (submitBtn) submitBtn.innerHTML = `<span>${isSignUp ? 'Create Account' : 'Sign In'}</span>`;
+    });
+  }
+
+  if (authForm) {
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!supabase || SUPABASE_URL === 'YOUR_SUPABASE_URL_HERE') return showToast('Supabase not configured yet. Add your keys in app.js!', 'error');
+      
+      const email = document.getElementById('authEmail').value;
+      const password = document.getElementById('authPassword').value;
+      
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) showToast(error.message, 'error');
+        else showToast('Account created! You can now log in.', 'success');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) showToast(error.message, 'error');
+        else {
+          showToast('Logged in successfully', 'success');
+          await checkAuth();
+        }
+      }
+    });
+  }
+  
+  if (signOutBtn) {
+    signOutBtn.addEventListener('click', async () => {
+      if (supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') {
+        await supabase.auth.signOut();
+        await checkAuth();
+      }
+    });
+  }
+}
+
 // --- Initialization ---
-function initApp() {
-  loadData();
+async function initApp() {
+  setupAuth();
+  await checkAuth();
+
+  await loadData();
   setupNavigation();
   setupSidebarToggle();
   setupFilters();
@@ -217,13 +294,29 @@ function initApp() {
   renderCallLog();
 }
 
-function loadData() {
-  // Clear any existing stored data and initialize clean empty state
-  state.calls = [];
-  saveData();
+async function loadData() {
+  if (supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') {
+    const { data, error } = await supabase.from('calls').select('*');
+    if (!error && data) {
+      state.calls = data;
+      return;
+    }
+  }
+  
+  // Fallback to localStorage
+  const stored = localStorage.getItem('coldCallTrackerData');
+  if (stored) {
+    state.calls = JSON.parse(stored);
+  } else {
+    state.calls = [];
+  }
 }
 
-function saveData() {
+async function saveData() {
+  if (supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') {
+    const { error } = await supabase.from('calls').upsert(state.calls);
+    if (error) console.error("Supabase save error:", error);
+  }
   localStorage.setItem('coldCallTrackerData', JSON.stringify(state.calls));
 }
 

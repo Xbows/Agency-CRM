@@ -1047,7 +1047,7 @@ tbody tr:nth-child(even) {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  z-index: 2000;
+  z-index: 99999;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1283,7 +1283,7 @@ tbody tr:nth-child(even) {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  z-index: 2000;
+  z-index: 99999;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1443,7 +1443,7 @@ td:nth-child(6) {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: var(--bg-body);
+  background: var(--bg-primary);
   display: flex;
   justify-content: center;
   align-items: center;

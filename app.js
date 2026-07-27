@@ -358,12 +358,17 @@ function updateKPIs() {
   if (elWeekly) elWeekly.textContent = weeklyCalls;
   if (elPending) elPending.textContent = pendingFollowups;
   
-  // Mock trends for demo
+  // Mock trends for demo (hide if no data)
   const mockTrend = (id, value, isPositive) => {
     const el = document.getElementById(id);
     if (el) {
-      el.textContent = `${isPositive ? '+' : '-'}${value}%`;
-      el.className = `trend-indicator ${isPositive ? 'trend-up' : 'trend-down'}`;
+      if (state.calls.length === 0) {
+        el.style.display = 'none';
+      } else {
+        el.style.display = '';
+        el.textContent = `${isPositive ? '+' : '-'}${value}%`;
+        el.className = `kpi-trend ${isPositive ? 'up' : 'down'}`;
+      }
     }
   };
   

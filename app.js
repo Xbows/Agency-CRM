@@ -545,8 +545,8 @@ function createMonthlyTrendChart() {
   if (!ctx) return;
   if (state.charts.monthly) state.charts.monthly.destroy();
   
-  // Mock monthly data
-  const data = [12, 19, 15, 25, 22, 30];
+  // Mock monthly data, zero out if no calls
+  const data = state.calls.length > 0 ? [12, 19, 15, 25, 22, 30] : [0, 0, 0, 0, 0, 0];
   const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 400);
   gradient.addColorStop(0, 'rgba(88, 194, 153, 0.5)');
   gradient.addColorStop(1, 'rgba(88, 194, 153, 0.0)');
@@ -577,15 +577,16 @@ function createOutcomeTimeChart() {
   if (!ctx) return;
   if (state.charts.outcomeTime) state.charts.outcomeTime.destroy();
 
+  const hasData = state.calls.length > 0;
   state.charts.outcomeTime = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: ['W1', 'W2', 'W3', 'W4'],
       datasets: [
-        { label: 'Interested', data: [2, 3, 4, 5], backgroundColor: '#58C299', stack: 'Stack 0' },
-        { label: 'Rejected', data: [5, 6, 5, 8], backgroundColor: '#4A5568', stack: 'Stack 0' },
-        { label: 'Follow-up', data: [3, 4, 2, 4], backgroundColor: '#718096', stack: 'Stack 0' },
-        { label: 'No Answer', data: [2, 1, 3, 2], backgroundColor: '#A0AEC0', stack: 'Stack 0' }
+        { label: 'Interested', data: hasData ? [2, 3, 4, 5] : [0, 0, 0, 0], backgroundColor: '#58C299', stack: 'Stack 0' },
+        { label: 'Rejected', data: hasData ? [5, 6, 5, 8] : [0, 0, 0, 0], backgroundColor: '#4A5568', stack: 'Stack 0' },
+        { label: 'Follow-up', data: hasData ? [3, 4, 2, 4] : [0, 0, 0, 0], backgroundColor: '#718096', stack: 'Stack 0' },
+        { label: 'No Answer', data: hasData ? [2, 1, 3, 2] : [0, 0, 0, 0], backgroundColor: '#A0AEC0', stack: 'Stack 0' }
       ]
     },
     options: {

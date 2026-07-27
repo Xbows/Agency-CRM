@@ -203,8 +203,8 @@ function showToast(message, type = 'info') {
 }
 
 // --- Supabase Setup & Auth ---
-const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
+const SUPABASE_URL = 'https://nvzsmqlznqwxvrdvxrmc.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52enNtcWx6bnF3eHZyZHZ4cm1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNjQxMjUsImV4cCI6MjEwMDc0MDEyNX0.WXOVQTEUa45Ze80zDODOZAnTLW8sj74HhvLfEfczQeY';
 let supabase = null;
 
 if (typeof window.supabase !== 'undefined') {

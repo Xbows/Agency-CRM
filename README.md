@@ -25,9 +25,14 @@ Then open `http://localhost:4173`.
 
 ## Authentication
 
-Users can create an account or sign in with email and password. If email
-confirmation is enabled in Supabase, a newly registered user must confirm their
-email before signing in.
+Users create an account and sign in with a username and password. The browser
+maps the username to a reserved, non-deliverable internal identifier so users
+never enter or receive email. Supabase email confirmation must be disabled for
+new accounts to receive a session immediately.
+
+Usernames are case-insensitive, must be 3–24 characters, and may contain
+letters, numbers, and underscores. Because accounts have no real email address,
+email-based password recovery is intentionally unavailable.
 
 For production authentication, add the production Vercel domain to:
 

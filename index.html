@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./style.css?v=8">
+  <link rel="stylesheet" href="./style.css?v=9">
 </head>
 <body>
   <!-- ============================================ -->
@@ -23,12 +23,29 @@
       </div>
       <form id="authForm">
         <div class="form-group">
-          <label for="authEmail">Email Address</label>
-          <input type="email" id="authEmail" placeholder="you@example.com" required>
+          <label for="authUsername">Username</label>
+          <input
+            type="text"
+            id="authUsername"
+            placeholder="your_username"
+            autocomplete="username"
+            minlength="3"
+            maxlength="24"
+            pattern="[A-Za-z0-9_]+"
+            required
+          >
         </div>
         <div class="form-group">
           <label for="authPassword">Password</label>
-          <input type="password" id="authPassword" placeholder="••••••••" required>
+          <input
+            type="password"
+            id="authPassword"
+            placeholder="••••••••"
+            autocomplete="current-password"
+            minlength="8"
+            maxlength="72"
+            required
+          >
         </div>
         <button type="submit" class="btn-primary w-100" id="authSubmitBtn" style="width: 100%; justify-content: center; margin-top: 10px;">
           <span>Sign In</span>
@@ -630,7 +647,7 @@
   <!-- SCRIPTS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-  <script src="app.js?v=13"></script>
+  <script src="app.js?v=14"></script>
 
 </body>
 </html>

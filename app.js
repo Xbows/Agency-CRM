@@ -110,9 +110,22 @@ function showToast(message, type = 'info') {
 const SUPABASE_URL = 'https://nvzsmqlznqwxvrdvxrmc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52enNtcWx6bnF3eHZyZHZ4cm1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNjQxMjUsImV4cCI6MjEwMDc0MDEyNX0.WXOVQTEUa45Ze80zDODOZAnTLW8sj74HhvLfEfczQeY';
 let supabaseClient = null;
+const USERNAME_DOMAIN = 'users.agency-crm.invalid';
 
 if (typeof window.supabase !== 'undefined') {
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+function normalizeUsername(value) {
+  return value.trim().toLowerCase();
+}
+
+function isValidUsername(username) {
+  return /^[a-z0-9_]{3,24}$/.test(username);
+}
+
+function usernameToInternalEmail(username) {
+  return `${username}@${USERNAME_DOMAIN}`;
 }
 
 async function checkAuth() {
@@ -143,6 +156,7 @@ function setupAuth() {
   const signOutBtn = document.getElementById('signOutBtn');
   
   let isSignUp = false;
+  let authSubmitting = false;
 
   if (toggleLink) {
     toggleLink.addEventListener('click', (e) => {
@@ -158,23 +172,35 @@ function setupAuth() {
     authForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!supabaseClient) return showToast('Authentication is temporarily unavailable.', 'error');
+      if (authSubmitting) return;
       
-      const email = document.getElementById('authEmail').value;
+      const username = normalizeUsername(document.getElementById('authUsername').value);
       const password = document.getElementById('authPassword').value;
 
+      if (!isValidUsername(username)) {
+        return showToast('Username must be 3–24 characters using letters, numbers, or underscores.', 'error');
+      }
+
+      authSubmitting = true;
       submitBtn.disabled = true;
       submitBtn.querySelector('span').textContent = isSignUp ? 'Creating Account…' : 'Signing In…';
 
       try {
+        const email = usernameToInternalEmail(username);
+
         if (isSignUp) {
-          const { data, error } = await supabaseClient.auth.signUp({ email, password });
+          const { data, error } = await supabaseClient.auth.signUp({
+            email,
+            password,
+            options: { data: { username } }
+          });
           if (error) throw error;
 
           if (data.session) {
             showToast('Account created and signed in!', 'success');
             await activateAuthenticatedApp();
           } else {
-            showToast('Account created. Check your email to confirm your address.', 'success');
+            throw new Error('Account creation is not ready yet. Please try again shortly.');
           }
         } else {
           const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -183,8 +209,12 @@ function setupAuth() {
           await activateAuthenticatedApp();
         }
       } catch (error) {
-        showToast(error.message || 'Authentication failed. Please try again.', 'error');
+        const message = /invalid login credentials/i.test(error.message)
+          ? 'Incorrect username or password.'
+          : error.message || 'Authentication failed. Please try again.';
+        showToast(message, 'error');
       } finally {
+        authSubmitting = false;
         submitBtn.disabled = false;
         submitBtn.querySelector('span').textContent = isSignUp ? 'Create Account' : 'Sign In';
       }

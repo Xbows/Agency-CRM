@@ -17,108 +17,12 @@ const state = {
     search: ''
   },
   editingCallId: null,
+  pendingDeleteId: null,
+  currentUser: null,
   charts: {}
 };
 
-// --- Sample Data Generation ---
-function generateSampleData() {
-  const sampleCompanies = [
-    { name: 'TechNova Solutions', contact: 'Sarah Jenkins', email: 'sarah.j@technova.io', phone: '+1 (555) 123-4567' },
-    { name: 'CloudPeak Systems', contact: 'Michael Chang', email: 'm.chang@cloudpeak.net', phone: '+1 (555) 234-5678' },
-    { name: 'DataForge Analytics', contact: 'Elena Rodriguez', email: 'elena@dataforge.co', phone: '+1 (555) 345-6789' },
-    { name: 'Nexus Digital', contact: 'David Kim', email: 'dkim@nexusdigital.com', phone: '+1 (555) 456-7890' },
-    { name: 'Quantum Frameworks', contact: 'Rachel Adams', email: 'radams@quantumfw.com', phone: '+1 (555) 567-8901' },
-    { name: 'ByteShift Labs', contact: 'Marcus Johnson', email: 'mjohnson@byteshift.io', phone: '+1 (555) 678-9012' },
-    { name: 'Apex Innovations', contact: 'Amanda Smith', email: 'asmith@apexinv.com', phone: '+1 (555) 789-0123' },
-    { name: 'Starlight Media', contact: 'Tom Wilson', email: 'twilson@starlight.net', phone: '+1 (555) 890-1234' },
-    { name: 'Crescent Cyber', contact: 'Lisa Wong', email: 'lwong@crescentcyber.com', phone: '+1 (555) 901-2345' },
-    { name: 'OmniSphere Tech', contact: 'James Brown', email: 'jbrown@omnisphere.io', phone: '+1 (555) 012-3456' },
-    { name: 'Pioneer Software', contact: 'Emily Davis', email: 'edavis@pioneer.dev', phone: '+1 (555) 111-2222' },
-    { name: 'Vanguard Networks', contact: 'Daniel Miller', email: 'dmiller@vanguard.net', phone: '+1 (555) 222-3333' },
-    { name: 'Horizon Cloud', contact: 'Sophia Taylor', email: 'staylor@horizon.cloud', phone: '+1 (555) 333-4444' },
-    { name: 'Zenith Solutions', contact: 'Matthew Anderson', email: 'manderson@zenith.co', phone: '+1 (555) 444-5555' },
-    { name: 'Stratos Data', contact: 'Olivia Thomas', email: 'othomas@stratos.io', phone: '+1 (555) 555-6666' }
-  ];
-
-  const outcomes = [
-    { value: 'interested', weight: 15 },
-    { value: 'rejected', weight: 35 },
-    { value: 'follow-up', weight: 30 },
-    { value: 'no-answer', weight: 20 }
-  ];
-
-  const priorities = [
-    { value: 'urgent', weight: 20 },
-    { value: 'high', weight: 25 },
-    { value: 'medium', weight: 35 },
-    { value: 'low', weight: 20 }
-  ];
-
-  const notes = [
-    "Contact was busy, asked to call back next week.",
-    "Presented our new enterprise tier. Seemed interested in the ROI.",
-    "Not a priority for them this quarter. Budget frozen.",
-    "Left a voicemail detailing our Q3 promotion.",
-    "Gatekeeper blocked the call. Need to find a direct line.",
-    "Great conversation about their current pain points. Scheduled a demo.",
-    "They are currently using a competitor but unhappy with support.",
-    "Wrong number on file. Need to research correct contact info."
-  ];
-
-  const getWeightedRandom = (arr) => {
-    const totalWeight = arr.reduce((sum, item) => sum + item.weight, 0);
-    let randomNum = Math.random() * totalWeight;
-    for (let i = 0; i < arr.length; i++) {
-      randomNum -= arr[i].weight;
-      if (randomNum <= 0) return arr[i].value;
-    }
-    return arr[arr.length - 1].value;
-  };
-
-  const calls = [];
-  const now = new Date('2026-07-27T13:17:32+03:00'); 
-
-  for (let i = 0; i < 30; i++) {
-    const company = sampleCompanies[Math.floor(Math.random() * sampleCompanies.length)];
-    
-    // Distribute dates mostly recent
-    const daysAgo = Math.floor(Math.pow(Math.random(), 2) * 30); 
-    const callDate = new Date(now);
-    callDate.setDate(now.getDate() - daysAgo);
-    callDate.setHours(9 + Math.floor(Math.random() * 8)); 
-    callDate.setMinutes(Math.floor(Math.random() * 60));
-
-    calls.push({
-      id: generateId(),
-      companyName: company.name,
-      contactPerson: company.contact,
-      phone: company.phone,
-      email: company.email,
-      dateTime: callDate.toISOString(),
-      priority: getWeightedRandom(priorities),
-      outcome: getWeightedRandom(outcomes),
-      callNotes: notes[Math.floor(Math.random() * notes.length)],
-      businessDetails: `${company.name} is a mid-sized enterprise focusing on B2B solutions.`,
-      report: `Call concluded with outcome: ${getWeightedRandom(outcomes)}. Action items updated.`,
-      createdAt: new Date(callDate.getTime() - 1000000).toISOString()
-    });
-  }
-  
-  // Sort by date descending
-  calls.sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime));
-  
-  return calls;
-}
-
 // --- Utilities ---
-function generateId() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-}
-
 function escapeHtml(unsafe) {
   if (!unsafe) return '';
   return unsafe
@@ -145,7 +49,7 @@ function formatDateTime(isoString) {
 function formatTimeAgo(isoString) {
   if (!isoString) return '';
   const date = new Date(isoString);
-  const now = new Date('2026-07-27T13:17:32+03:00');
+  const now = new Date();
   const seconds = Math.floor((now - date) / 1000);
 
   let interval = seconds / 31536000;
@@ -205,23 +109,30 @@ function showToast(message, type = 'info') {
 // --- Supabase Setup & Auth ---
 const SUPABASE_URL = 'https://nvzsmqlznqwxvrdvxrmc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52enNtcWx6bnF3eHZyZHZ4cm1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNjQxMjUsImV4cCI6MjEwMDc0MDEyNX0.WXOVQTEUa45Ze80zDODOZAnTLW8sj74HhvLfEfczQeY';
-let supabase = null;
+let supabaseClient = null;
 
 if (typeof window.supabase !== 'undefined') {
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
 async function checkAuth() {
-  if (!supabase || SUPABASE_URL === 'YOUR_SUPABASE_URL_HERE') return true; 
-  const { data: { session } } = await supabase.auth.getSession();
   const authOverlay = document.getElementById('authOverlay');
-  if (session) {
-    if (authOverlay) authOverlay.classList.remove('active');
-    return true;
-  } else {
+  if (!supabaseClient) {
     if (authOverlay) authOverlay.classList.add('active');
+    showToast('Unable to connect to authentication. Please refresh and try again.', 'error');
     return false;
   }
+
+  const { data: { session }, error } = await supabaseClient.auth.getSession();
+  if (error) {
+    if (authOverlay) authOverlay.classList.add('active');
+    showToast(error.message, 'error');
+    return false;
+  }
+
+  state.currentUser = session?.user || null;
+  if (authOverlay) authOverlay.classList.toggle('active', !session);
+  return Boolean(session);
 }
 
 function setupAuth() {
@@ -246,78 +157,148 @@ function setupAuth() {
   if (authForm) {
     authForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!supabase || SUPABASE_URL === 'YOUR_SUPABASE_URL_HERE') return showToast('Supabase not configured yet. Add your keys in app.js!', 'error');
+      if (!supabaseClient) return showToast('Authentication is temporarily unavailable.', 'error');
       
       const email = document.getElementById('authEmail').value;
       const password = document.getElementById('authPassword').value;
-      
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) showToast(error.message, 'error');
-        else showToast('Account created! You can now log in.', 'success');
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) showToast(error.message, 'error');
-        else {
+
+      submitBtn.disabled = true;
+      submitBtn.querySelector('span').textContent = isSignUp ? 'Creating Account…' : 'Signing In…';
+
+      try {
+        if (isSignUp) {
+          const { data, error } = await supabaseClient.auth.signUp({ email, password });
+          if (error) throw error;
+
+          if (data.session) {
+            showToast('Account created and signed in!', 'success');
+            await activateAuthenticatedApp();
+          } else {
+            showToast('Account created. Check your email to confirm your address.', 'success');
+          }
+        } else {
+          const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+          if (error) throw error;
           showToast('Logged in successfully', 'success');
-          await checkAuth();
+          await activateAuthenticatedApp();
         }
+      } catch (error) {
+        showToast(error.message || 'Authentication failed. Please try again.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.querySelector('span').textContent = isSignUp ? 'Create Account' : 'Sign In';
       }
     });
   }
   
   if (signOutBtn) {
     signOutBtn.addEventListener('click', async () => {
-      if (supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') {
-        await supabase.auth.signOut();
+      if (supabaseClient) {
+        const { error } = await supabaseClient.auth.signOut();
+        if (error) return showToast(error.message, 'error');
+        state.currentUser = null;
+        state.calls = [];
+        renderAll();
         await checkAuth();
       }
     });
   }
+
+  supabaseClient?.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT') {
+      state.currentUser = null;
+      state.calls = [];
+      renderAll();
+      document.getElementById('authOverlay')?.classList.add('active');
+    } else if (session) {
+      window.setTimeout(() => {
+        if (session.user?.id !== state.currentUser?.id) activateAuthenticatedApp();
+      }, 0);
+    }
+  });
 }
 
 // --- Initialization ---
 async function initApp() {
   setupAuth();
-  await checkAuth();
-
-  await loadData();
   setupNavigation();
   setupSidebarToggle();
   setupFilters();
   setupEventListeners();
-  
-  // Initial renders
-  updateKPIs();
   initCharts();
-  renderRecentCalls();
-  renderCallLog();
+  renderAll();
+
+  if (await checkAuth()) {
+    await activateAuthenticatedApp();
+  }
 }
 
 async function loadData() {
-  if (supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') {
-    const { data, error } = await supabase.from('calls').select('*');
-    if (!error && data) {
-      state.calls = data;
-      return;
-    }
-  }
-  
-  // Fallback to localStorage
-  const stored = localStorage.getItem('coldCallTrackerData');
-  if (stored) {
-    state.calls = JSON.parse(stored);
-  } else {
+  if (!supabaseClient || !state.currentUser) {
     state.calls = [];
+    return;
   }
+
+  const { data, error } = await supabaseClient
+    .from('calls')
+    .select('id, user_id, called_at, company_name, contact_person, phone, email, priority, outcome, report, business_details, created_at')
+    .eq('user_id', state.currentUser.id)
+    .order('called_at', { ascending: false });
+
+  if (error) {
+    showToast(`Could not load calls: ${error.message}`, 'error');
+    state.calls = [];
+    return;
+  }
+
+  state.calls = (data || []).map(fromDatabaseCall);
 }
 
-async function saveData() {
-  if (supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') {
-    const { error } = await supabase.from('calls').upsert(state.calls);
-    if (error) console.error("Supabase save error:", error);
-  }
-  localStorage.setItem('coldCallTrackerData', JSON.stringify(state.calls));
+function fromDatabaseCall(row) {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    companyName: row.company_name,
+    contactPerson: row.contact_person,
+    phone: row.phone,
+    email: row.email,
+    dateTime: row.called_at,
+    priority: row.priority,
+    outcome: row.outcome,
+    report: row.report,
+    callNotes: row.report,
+    businessDetails: row.business_details,
+    createdAt: row.created_at
+  };
+}
+
+function toDatabaseCall(call) {
+  return {
+    user_id: state.currentUser.id,
+    company_name: call.companyName,
+    contact_person: call.contactPerson,
+    phone: call.phone,
+    email: call.email || null,
+    called_at: call.dateTime,
+    priority: call.priority,
+    outcome: call.outcome,
+    report: call.report,
+    business_details: call.businessDetails || null
+  };
+}
+
+async function activateAuthenticatedApp() {
+  if (!await checkAuth()) return;
+  await loadData();
+  renderAll();
+}
+
+function renderAll() {
+  updateKPIs();
+  updateCharts();
+  renderRecentCalls();
+  renderCallLog();
+  updateAnalyticsKPIs();
 }
 
 // --- Navigation ---
@@ -394,12 +375,10 @@ function setupSidebarToggle() {
   // Refresh button
   const refreshBtn = document.getElementById('refreshBtn');
   if (refreshBtn) {
-    refreshBtn.addEventListener('click', () => {
-      updateKPIs();
-      updateCharts();
-      renderRecentCalls();
-      renderCallLog();
-      showToast('Data refreshed', 'info');
+    refreshBtn.addEventListener('click', async () => {
+      await loadData();
+      renderAll();
+      showToast('Data refreshed', 'success');
     });
   }
 }
@@ -407,7 +386,7 @@ function setupSidebarToggle() {
 // --- KPIs ---
 function isToday(dateStr) {
   const date = new Date(dateStr);
-  const today = new Date('2026-07-27T13:17:32+03:00');
+  const today = new Date();
   return date.getDate() === today.getDate() &&
          date.getMonth() === today.getMonth() &&
          date.getFullYear() === today.getFullYear();
@@ -415,7 +394,7 @@ function isToday(dateStr) {
 
 function isThisWeek(dateStr) {
   const date = new Date(dateStr);
-  const now = new Date('2026-07-27T13:17:32+03:00');
+  const now = new Date();
   
   const day = now.getDay();
   const diff = now.getDate() - day + (day === 0 ? -6 : 1); 
@@ -436,7 +415,7 @@ function updateKPIs() {
     if (isToday(call.dateTime)) todayCalls++;
     if (call.outcome === 'interested') interestedCalls++;
     if (isThisWeek(call.dateTime)) weeklyCalls++;
-    if (call.outcome === 'follow-up') pendingFollowups++;
+    if (call.outcome === 'not-quite-interested') pendingFollowups++;
   });
 
   const conversionRate = state.calls.length > 0 ? ((interestedCalls / state.calls.length) * 100).toFixed(1) : 0;
@@ -451,24 +430,16 @@ function updateKPIs() {
   if (elWeekly) elWeekly.textContent = weeklyCalls;
   if (elPending) elPending.textContent = pendingFollowups;
   
-  // Mock trends for demo (hide if no data)
-  const mockTrend = (id, value, isPositive) => {
+  // Trends require a previous comparison period. Hide them until that calculation exists.
+  const hideTrend = (id) => {
     const el = document.getElementById(id);
-    if (el) {
-      if (state.calls.length === 0) {
-        el.style.display = 'none';
-      } else {
-        el.style.display = '';
-        el.textContent = `${isPositive ? '+' : '-'}${value}%`;
-        el.className = `kpi-trend ${isPositive ? 'up' : 'down'}`;
-      }
-    }
+    if (el) el.style.display = 'none';
   };
   
-  mockTrend('kpiTotalTrend', 12, true);
-  mockTrend('kpiConversionTrend', 2.4, true);
-  mockTrend('kpiWeeklyTrend', 5, false);
-  mockTrend('kpiPendingTrend', 8, true);
+  hideTrend('kpiTotalTrend');
+  hideTrend('kpiConversionTrend');
+  hideTrend('kpiWeeklyTrend');
+  hideTrend('kpiPendingTrend');
 }
 
 // --- Charts ---
@@ -510,19 +481,27 @@ function updateCharts() {
     state.charts.priority.data.datasets[0].data = [counts.urgent, counts.high, counts.medium, counts.low];
     state.charts.priority.update();
   }
+  if (state.charts.outcomeTime) {
+    const timeline = getOutcomeTimeData();
+    state.charts.outcomeTime.data.labels = timeline.labels;
+    state.charts.outcomeTime.data.datasets.forEach((dataset, index) => {
+      dataset.data = timeline.datasets[index];
+    });
+    state.charts.outcomeTime.update();
+  }
 }
 
 function getOutcomeData() {
-  const counts = { 'interested': 0, 'rejected': 0, 'follow-up': 0, 'no-answer': 0 };
+  const counts = { 'interested': 0, 'not-quite-interested': 0, 'not-interested': 0 };
   state.calls.forEach(c => {
     if (counts[c.outcome] !== undefined) counts[c.outcome]++;
   });
-  return [counts['interested'], counts['rejected'], counts['follow-up'], counts['no-answer']];
+  return [counts['interested'], counts['not-quite-interested'], counts['not-interested']];
 }
 
 function getWeeklyData() {
   const days = [0,0,0,0,0,0,0]; // Mon-Sun
-  const now = new Date('2026-07-27T13:17:32+03:00');
+  const now = new Date();
   const dayOfWeek = now.getDay(); 
   const diffToMonday = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
   const startOfWeek = new Date(now.setDate(diffToMonday));
@@ -553,10 +532,10 @@ function createOutcomeChart() {
   state.charts.outcome = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: ['Interested', 'Rejected', 'Follow-up', 'No Answer'],
+      labels: ['Interested', 'Not Quite Interested', 'Not Interested'],
       datasets: [{
         data: getOutcomeData(),
-        backgroundColor: ['#58C299', '#718096', '#4A5568', '#2D3748'],
+        backgroundColor: ['#58C299', '#FFB946', '#718096'],
         borderWidth: 0,
         hoverOffset: 4
       }]
@@ -640,16 +619,15 @@ function createOutcomeTimeChart() {
   if (!ctx) return;
   if (state.charts.outcomeTime) state.charts.outcomeTime.destroy();
 
-  const hasData = state.calls.length > 0;
+  const timeline = getOutcomeTimeData();
   state.charts.outcomeTime = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: ['W1', 'W2', 'W3', 'W4'],
+      labels: timeline.labels,
       datasets: [
-        { label: 'Interested', data: hasData ? [2, 3, 4, 5] : [0, 0, 0, 0], backgroundColor: '#58C299', stack: 'Stack 0' },
-        { label: 'Rejected', data: hasData ? [5, 6, 5, 8] : [0, 0, 0, 0], backgroundColor: '#4A5568', stack: 'Stack 0' },
-        { label: 'Follow-up', data: hasData ? [3, 4, 2, 4] : [0, 0, 0, 0], backgroundColor: '#718096', stack: 'Stack 0' },
-        { label: 'No Answer', data: hasData ? [2, 1, 3, 2] : [0, 0, 0, 0], backgroundColor: '#A0AEC0', stack: 'Stack 0' }
+        { label: 'Interested', data: timeline.datasets[0], backgroundColor: '#58C299', stack: 'Stack 0' },
+        { label: 'Not Quite Interested', data: timeline.datasets[1], backgroundColor: '#FFB946', stack: 'Stack 0' },
+        { label: 'Not Interested', data: timeline.datasets[2], backgroundColor: '#718096', stack: 'Stack 0' }
       ]
     },
     options: {
@@ -658,6 +636,41 @@ function createOutcomeTimeChart() {
       scales: { x: { stacked: true }, y: { stacked: true } }
     }
   });
+}
+
+function getOutcomeTimeData() {
+  const labels = [];
+  const datasets = [[], [], []];
+  const outcomeIndexes = {
+    'interested': 0,
+    'not-quite-interested': 1,
+    'not-interested': 2
+  };
+  const currentWeek = new Date();
+  const day = currentWeek.getDay();
+  currentWeek.setDate(currentWeek.getDate() - day + (day === 0 ? -6 : 1));
+  currentWeek.setHours(0, 0, 0, 0);
+
+  for (let offset = 3; offset >= 0; offset--) {
+    const start = new Date(currentWeek);
+    start.setDate(start.getDate() - offset * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    labels.push(start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    const counts = [0, 0, 0];
+
+    state.calls.forEach(call => {
+      const calledAt = new Date(call.dateTime);
+      const outcomeIndex = outcomeIndexes[call.outcome];
+      if (calledAt >= start && calledAt < end && outcomeIndex !== undefined) {
+        counts[outcomeIndex]++;
+      }
+    });
+
+    counts.forEach((count, index) => datasets[index].push(count));
+  }
+
+  return { labels, datasets };
 }
 
 // --- Table Rendering ---
@@ -767,7 +780,7 @@ function getFilteredCalls() {
       if (state.filters.date === 'week' && !isThisWeek(call.dateTime)) return false;
       if (state.filters.date === 'month') {
         const d = new Date(call.dateTime);
-        const now = new Date('2026-07-27T13:17:32+03:00');
+        const now = new Date();
         if (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return false;
       }
     }
@@ -828,14 +841,17 @@ function renderCallLog() {
 }
 
 function updatePagination(total, current, perPage) {
-  const infoEl = document.getElementById('callLogInfo') || document.getElementById('callLogPaginationInfo');
+  const infoEls = [
+    document.getElementById('callLogInfo'),
+    document.getElementById('callLogPaginationInfo')
+  ].filter(Boolean);
   const pageNumbersEl = document.getElementById('pageNumbers');
   
-  if (infoEl) {
-    const start = total === 0 ? 0 : (current - 1) * perPage + 1;
-    const end = Math.min(current * perPage, total);
-    infoEl.textContent = `Showing ${start} to ${end} of ${total} entries`;
-  }
+  const start = total === 0 ? 0 : (current - 1) * perPage + 1;
+  const end = Math.min(current * perPage, total);
+  infoEls.forEach(el => {
+    el.textContent = `Showing ${start} to ${end} of ${total} entries`;
+  });
   
   if (pageNumbersEl) {
     const totalPages = Math.ceil(total / perPage) || 1;
@@ -873,6 +889,9 @@ function setupEventListeners() {
   document.getElementById('closeModal')?.addEventListener('click', closeModals);
   document.getElementById('cancelModal')?.addEventListener('click', closeModals);
   document.getElementById('closeDetail')?.addEventListener('click', closeModals);
+  document.getElementById('closeConfirm')?.addEventListener('click', closeModals);
+  document.getElementById('cancelConfirm')?.addEventListener('click', closeModals);
+  document.getElementById('confirmDelete')?.addEventListener('click', confirmDeleteCall);
   
   // Close on outside click
   window.addEventListener('click', (e) => {
@@ -905,11 +924,25 @@ function setupEventListeners() {
   
   // Pagination clicks
   document.body.addEventListener('click', (e) => {
-    const pageBtn = e.target.closest('.page-btn');
+    const pageBtn = e.target.closest('button[data-page]');
     if (pageBtn) {
       state.callLogPage = parseInt(pageBtn.getAttribute('data-page'), 10);
       renderCallLog();
     }
+  });
+
+  document.body.addEventListener('click', (e) => {
+    const heading = e.target.closest('.sortable[data-sort]');
+    if (!heading) return;
+    const nextSort = heading.getAttribute('data-sort');
+    if (state.sortBy === nextSort) {
+      state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      state.sortBy = nextSort;
+      state.sortDir = 'asc';
+    }
+    state.callLogPage = 1;
+    renderCallLog();
   });
   
   document.getElementById('prevPage')?.addEventListener('click', () => {
@@ -982,13 +1015,6 @@ function openAddModal() {
   const title = document.getElementById('modalTitle');
   if (title) title.textContent = 'Add New Call';
   
-  const dtInput = document.getElementById('callDateTime');
-  if (dtInput) {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    dtInput.value = now.toISOString().slice(0, 16);
-  }
-  
   const modal = document.getElementById('callModal');
   if (modal) modal.classList.add('active');
 }
@@ -1018,8 +1044,12 @@ function openEditModal(id) {
   if (callModal) callModal.classList.add('active');
 }
 
-function saveCall(e) {
+async function saveCall(e) {
   e.preventDefault();
+  if (!supabaseClient || !state.currentUser) {
+    showToast('Please sign in before saving a call.', 'error');
+    return;
+  }
   
   const companyVal = document.getElementById('companyName')?.value?.trim();
   const reportVal = document.getElementById('report')?.value?.trim();
@@ -1035,7 +1065,9 @@ function saveCall(e) {
     companyName: companyVal,
     contactPerson: document.getElementById('contactPerson')?.value?.trim() || '—',
     phone: phoneVal || '—',
-    dateTime: new Date().toISOString(), // Auto-scans date automatically!
+    dateTime: state.editingCallId
+      ? state.calls.find(c => c.id === state.editingCallId)?.dateTime
+      : new Date().toISOString(),
     priority: document.getElementById('priority')?.value || 'medium',
     outcome: document.getElementById('outcome')?.value || 'interested',
     report: reportVal || 'No report summary provided',
@@ -1044,46 +1076,73 @@ function saveCall(e) {
     businessDetails: businessVal || ''
   };
   
-  if (state.editingCallId) {
-    // Update
-    const idx = state.calls.findIndex(c => c.id === state.editingCallId);
-    if (idx !== -1) {
-      state.calls[idx] = { ...state.calls[idx], ...formData };
+  const saveButton = document.getElementById('saveCallBtn');
+  saveButton.disabled = true;
+
+  try {
+    if (state.editingCallId) {
+      const { data, error } = await supabaseClient
+        .from('calls')
+        .update(toDatabaseCall(formData))
+        .eq('id', state.editingCallId)
+        .eq('user_id', state.currentUser.id)
+        .select()
+        .single();
+      if (error) throw error;
+
+      const idx = state.calls.findIndex(c => c.id === state.editingCallId);
+      if (idx !== -1) state.calls[idx] = fromDatabaseCall(data);
       showToast('Call log updated successfully!', 'success');
+    } else {
+      const { data, error } = await supabaseClient
+        .from('calls')
+        .insert(toDatabaseCall(formData))
+        .select()
+        .single();
+      if (error) throw error;
+
+      const newCall = fromDatabaseCall(data);
+      state.calls.unshift(newCall);
+      showToast(`Logged call for "${newCall.companyName}" successfully!`, 'success');
     }
-  } else {
-    // Add
-    const newCall = {
-      id: generateId(),
-      ...formData,
-      createdAt: new Date().toISOString()
-    };
-    state.calls.unshift(newCall);
-    showToast(`Logged call for "${newCall.companyName}" successfully!`, 'success');
+
+    closeModals();
+    renderAll();
+  } catch (error) {
+    showToast(`Could not save call: ${error.message}`, 'error');
+  } finally {
+    saveButton.disabled = false;
   }
-  
-  saveData();
-  closeModals();
-  
-  updateKPIs();
-  updateCharts();
-  renderRecentCalls();
-  renderCallLog();
 }
 
 function deleteCall(id) {
-  if (confirm("Are you sure you want to delete this call record?")) {
-    state.calls = state.calls.filter(c => c.id !== id);
-    saveData();
+  state.pendingDeleteId = id;
+  document.getElementById('detailModal')?.classList.remove('active');
+  document.getElementById('confirmModal')?.classList.add('active');
+}
+
+async function confirmDeleteCall() {
+  const id = state.pendingDeleteId;
+  if (!id || !supabaseClient || !state.currentUser) return;
+
+  const confirmButton = document.getElementById('confirmDelete');
+  confirmButton.disabled = true;
+  try {
+    const { error } = await supabaseClient
+      .from('calls')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', state.currentUser.id);
+    if (error) throw error;
+
+    state.calls = state.calls.filter(call => call.id !== id);
     showToast('Call deleted', 'success');
-    
-    const detailModal = document.getElementById('detailModal');
-    if (detailModal) detailModal.classList.remove('active');
-    
-    updateKPIs();
-    updateCharts();
-    renderRecentCalls();
-    renderCallLog();
+    closeModals();
+    renderAll();
+  } catch (error) {
+    showToast(`Could not delete call: ${error.message}`, 'error');
+  } finally {
+    confirmButton.disabled = false;
   }
 }
 
@@ -1110,7 +1169,7 @@ function viewCallDetail(id) {
   
   const oEl = document.getElementById('detailOutcome');
   if (oEl) {
-    oEl.textContent = call.outcome;
+    oEl.textContent = formatOutcomeText(call.outcome);
     oEl.className = `badge ${getOutcomeClass(call.outcome)}`;
   }
   
@@ -1135,6 +1194,7 @@ function viewCallDetail(id) {
 function closeModals() {
   document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
   state.editingCallId = null;
+  state.pendingDeleteId = null;
 }
 
 function updateAnalyticsKPIs() {
@@ -1155,7 +1215,11 @@ function updateAnalyticsKPIs() {
   state.calls.forEach(c => { if (pCounts[c.priority] !== undefined) pCounts[c.priority]++; });
   const topP = Object.entries(pCounts).sort((a, b) => b[1] - a[1])[0];
   const topEl = document.getElementById('analyticsTopPriority');
-  if (topEl) topEl.textContent = topP ? topP[0].charAt(0).toUpperCase() + topP[0].slice(1) : '—';
+  if (topEl) {
+    topEl.textContent = state.calls.length && topP
+      ? topP[0].charAt(0).toUpperCase() + topP[0].slice(1)
+      : '—';
+  }
 }
 
 // Start app when DOM loads

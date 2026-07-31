@@ -272,7 +272,6 @@ async function loadData() {
   const { data, error } = await supabaseClient
     .from('calls')
     .select('id, user_id, called_at, company_name, contact_person, phone, email, priority, outcome, report, business_details, created_at')
-    .eq('user_id', state.currentUser.id)
     .order('called_at', { ascending: false });
 
   if (error) {
@@ -302,9 +301,8 @@ function fromDatabaseCall(row) {
   };
 }
 
-function toDatabaseCall(call) {
-  return {
-    user_id: state.currentUser.id,
+function toDatabaseCall(call, includeCreator = true) {
+  const record = {
     company_name: call.companyName,
     contact_person: call.contactPerson,
     phone: call.phone,
@@ -315,10 +313,37 @@ function toDatabaseCall(call) {
     report: call.report,
     business_details: call.businessDetails || null
   };
+
+  if (includeCreator) record.user_id = state.currentUser.id;
+  return record;
+}
+
+async function hasWorkspaceAccess() {
+  if (!supabaseClient || !state.currentUser) return false;
+
+  const { data, error } = await supabaseClient
+    .from('workspace_members')
+    .select('user_id')
+    .eq('user_id', state.currentUser.id)
+    .maybeSingle();
+
+  if (error) {
+    showToast(`Could not verify workspace access: ${error.message}`, 'error');
+    return false;
+  }
+
+  return Boolean(data);
 }
 
 async function activateAuthenticatedApp() {
   if (!await checkAuth()) return;
+
+  if (!await hasWorkspaceAccess()) {
+    await supabaseClient.auth.signOut();
+    showToast('This account is not a workspace member. Ask an administrator for access.', 'error');
+    return;
+  }
+
   await loadData();
   renderAll();
 }
@@ -1113,9 +1138,8 @@ async function saveCall(e) {
     if (state.editingCallId) {
       const { data, error } = await supabaseClient
         .from('calls')
-        .update(toDatabaseCall(formData))
+        .update(toDatabaseCall(formData, false))
         .eq('id', state.editingCallId)
-        .eq('user_id', state.currentUser.id)
         .select()
         .single();
       if (error) throw error;
@@ -1161,8 +1185,7 @@ async function confirmDeleteCall() {
     const { error } = await supabaseClient
       .from('calls')
       .delete()
-      .eq('id', id)
-      .eq('user_id', state.currentUser.id);
+      .eq('id', id);
     if (error) throw error;
 
     state.calls = state.calls.filter(call => call.id !== id);

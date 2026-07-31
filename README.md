@@ -34,6 +34,10 @@ Usernames are case-insensitive, must be 3–24 characters, and may contain
 letters, numbers, and underscores. Because accounts have no real email address,
 email-based password recovery is intentionally unavailable.
 
+CRM records belong to one shared workspace. Approved members use separate
+accounts but can view, add, edit, and delete the same call records. Creating an
+account does not automatically grant access to the shared workspace.
+
 For production authentication, add the production Vercel domain to:
 
 `Supabase Dashboard → Authentication → URL Configuration`
@@ -44,8 +48,10 @@ The database migration is stored in:
 
 `supabase/migrations/20260729130000_secure_user_scoped_calls.sql`
 
-It aligns the `calls` table with the frontend and replaces the old shared-access
-policy with user-owned row-level security policies.
+`supabase/migrations/20260731123000_add_shared_workspace.sql`
+
+The migrations align the `calls` table with the frontend, enable row-level
+security, and restrict the shared CRM workspace to approved members.
 
 ## Deployment
 

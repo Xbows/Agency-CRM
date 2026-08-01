@@ -845,12 +845,18 @@ tbody tr:nth-child(even) {
   white-space: nowrap;
 }
 
-.queue-email {
+.queue-website {
   display: block;
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
+  text-decoration: none;
   white-space: nowrap;
+}
+
+.queue-website:hover {
+  color: var(--accent-primary);
+  text-decoration: underline;
 }
 
 .queue-note-cell {

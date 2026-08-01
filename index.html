@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./style.css?v=11">
+  <link rel="stylesheet" href="./style.css?v=12">
 </head>
 <body>
   <!-- ============================================ -->
@@ -193,7 +193,7 @@
                 <th>Priority</th>
                 <th>Company</th>
                 <th>Phone Number</th>
-                <th>Email</th>
+                <th>Web Link</th>
                 <th>Note</th>
               </tr>
             </thead>
@@ -523,8 +523,8 @@
           </div>
           <div class="form-row full">
             <div class="form-group">
-              <label for="queueEmail">Company Email</label>
-              <input type="email" id="queueEmail" placeholder="e.g. hello@company.com" maxlength="254">
+              <label for="queueWebsite">Web Link</label>
+              <input type="url" id="queueWebsite" placeholder="e.g. https://company.com" maxlength="2048">
             </div>
           </div>
           <div class="form-row full">
@@ -596,8 +596,8 @@
               <input type="tel" id="phone" placeholder="e.g. +1 (555) 123-4567">
             </div>
             <div class="form-group">
-              <label for="email">Company Email</label>
-              <input type="email" id="email" placeholder="e.g. hello@company.com" maxlength="254">
+              <label for="websiteUrl">Web Link</label>
+              <input type="url" id="websiteUrl" placeholder="e.g. https://company.com" maxlength="2048">
             </div>
           </div>
 
@@ -681,8 +681,8 @@
             <div class="detail-value" id="detailPhone">—</div>
           </div>
           <div class="detail-item">
-            <div class="detail-label">Email</div>
-            <div class="detail-value" id="detailEmail">—</div>
+            <div class="detail-label">Web Link</div>
+            <div class="detail-value" id="detailWebsite">—</div>
           </div>
           <div class="detail-item">
             <div class="detail-label">Date & Time</div>
@@ -770,7 +770,7 @@
   <!-- SCRIPTS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-  <script src="app.js?v=17"></script>
+  <script src="app.js?v=18"></script>
 
 </body>
 </html>

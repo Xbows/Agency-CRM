@@ -131,6 +131,19 @@ function usernameToInternalEmail(username) {
   return `${username}@${USERNAME_DOMAIN}`;
 }
 
+function normalizeWebsiteUrl(value) {
+  const trimmed = value?.trim();
+  if (!trimmed) return '';
+
+  const candidate = /^[a-z][a-z\d+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const parsed = new URL(candidate);
+    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : null;
+  } catch {
+    return null;
+  }
+}
+
 async function checkAuth() {
   const authOverlay = document.getElementById('authOverlay');
   if (!supabaseClient) {
@@ -278,7 +291,7 @@ async function loadData() {
 
   const { data, error } = await supabaseClient
     .from('calls')
-    .select('id, user_id, called_at, company_name, contact_person, phone, email, priority, outcome, report, business_details, created_at')
+    .select('id, user_id, called_at, company_name, contact_person, phone, website_url, priority, outcome, report, business_details, created_at')
     .order('called_at', { ascending: false });
 
   if (error) {
@@ -298,7 +311,7 @@ async function loadQueue() {
 
   const { data, error } = await supabaseClient
     .from('call_queue')
-    .select('id, user_id, company_name, phone, email, note, priority, created_at')
+    .select('id, user_id, company_name, phone, website_url, note, priority, created_at')
     .order('created_at', { ascending: true });
 
   if (error) {
@@ -312,7 +325,7 @@ async function loadQueue() {
     userId: row.user_id,
     companyName: row.company_name,
     phone: row.phone,
-    email: row.email,
+    websiteUrl: row.website_url,
     note: row.note,
     priority: row.priority,
     createdAt: row.created_at
@@ -326,7 +339,7 @@ function fromDatabaseCall(row) {
     companyName: row.company_name,
     contactPerson: row.contact_person,
     phone: row.phone,
-    email: row.email,
+    websiteUrl: row.website_url,
     dateTime: row.called_at,
     priority: row.priority,
     outcome: row.outcome,
@@ -342,7 +355,7 @@ function toDatabaseCall(call, includeCreator = true) {
     company_name: call.companyName,
     contact_person: call.contactPerson,
     phone: call.phone,
-    email: call.email || null,
+    website_url: call.websiteUrl || null,
     called_at: call.dateTime,
     priority: call.priority,
     outcome: call.outcome,
@@ -812,7 +825,10 @@ function renderQueue() {
       <td><span class="${getPriorityClass(item.priority)}">${escapeHtml(item.priority)}</span></td>
       <td><span class="queue-company-name">${escapeHtml(item.companyName)}</span></td>
       <td><span class="queue-phone">${escapeHtml(item.phone)}</span></td>
-      <td><span class="queue-email" title="${escapeHtml(item.email || '')}">${escapeHtml(item.email || '—')}</span></td>
+      <td>${item.websiteUrl
+        ? `<a class="queue-website" href="${escapeHtml(item.websiteUrl)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(item.websiteUrl)}">${escapeHtml(item.websiteUrl)}</a>`
+        : '<span class="queue-website">—</span>'}
+      </td>
       <td>
         <div class="queue-note-cell">
           <span class="queue-note" title="${escapeHtml(item.note)}">${escapeHtml(item.note)}</span>
@@ -1183,7 +1199,8 @@ async function saveQueuedCall(e) {
 
   const companyName = document.getElementById('queueCompany')?.value?.trim();
   const phone = document.getElementById('queuePhone')?.value?.trim();
-  const email = document.getElementById('queueEmail')?.value?.trim();
+  const websiteInput = document.getElementById('queueWebsite')?.value;
+  const websiteUrl = normalizeWebsiteUrl(websiteInput);
   const note = document.getElementById('queueNote')?.value?.trim();
   const priority = document.querySelector('input[name="queuePriority"]:checked')?.value || 'medium';
 
@@ -1192,8 +1209,8 @@ async function saveQueuedCall(e) {
     return;
   }
 
-  if (email && !document.getElementById('queueEmail')?.checkValidity()) {
-    showToast('Enter a valid company email address.', 'error');
+  if (websiteInput?.trim() && !websiteUrl) {
+    showToast('Enter a valid website link.', 'error');
     return;
   }
 
@@ -1207,11 +1224,11 @@ async function saveQueuedCall(e) {
         user_id: state.currentUser.id,
         company_name: companyName,
         phone,
-        email: email || null,
+        website_url: websiteUrl || null,
         note,
         priority
       })
-      .select('id, user_id, company_name, phone, email, note, priority, created_at')
+      .select('id, user_id, company_name, phone, website_url, note, priority, created_at')
       .single();
 
     if (error) throw error;
@@ -1221,7 +1238,7 @@ async function saveQueuedCall(e) {
       userId: data.user_id,
       companyName: data.company_name,
       phone: data.phone,
-      email: data.email,
+      websiteUrl: data.website_url,
       note: data.note,
       priority: data.priority,
       createdAt: data.created_at
@@ -1246,7 +1263,7 @@ function startQueuedCall(id) {
   state.activeQueueItemId = id;
   document.getElementById('companyName').value = item.companyName;
   document.getElementById('phone').value = item.phone;
-  document.getElementById('email').value = item.email || '';
+  document.getElementById('websiteUrl').value = item.websiteUrl || '';
   document.getElementById('priority').value = item.priority;
   document.getElementById('businessDetails').value = `Website issue: ${item.note}`;
 }
@@ -1289,7 +1306,7 @@ function openEditModal(id) {
   if (document.getElementById('companyName')) document.getElementById('companyName').value = call.companyName || '';
   if (document.getElementById('contactPerson')) document.getElementById('contactPerson').value = (call.contactPerson && call.contactPerson !== '—') ? call.contactPerson : '';
   if (document.getElementById('phone')) document.getElementById('phone').value = (call.phone && call.phone !== '—') ? call.phone : '';
-  if (document.getElementById('email')) document.getElementById('email').value = call.email || '';
+  if (document.getElementById('websiteUrl')) document.getElementById('websiteUrl').value = call.websiteUrl || '';
   if (document.getElementById('priority')) document.getElementById('priority').value = call.priority || 'medium';
   if (document.getElementById('outcome')) document.getElementById('outcome').value = call.outcome || 'interested';
   if (document.getElementById('report')) document.getElementById('report').value = call.report || call.callNotes || '';
@@ -1315,15 +1332,16 @@ async function saveCall(e) {
   const reportVal = document.getElementById('report')?.value?.trim();
   const phoneVal = document.getElementById('phone')?.value?.trim();
   const businessVal = document.getElementById('businessDetails')?.value?.trim();
-  const emailVal = document.getElementById('email')?.value?.trim();
+  const websiteInput = document.getElementById('websiteUrl')?.value;
+  const websiteUrl = normalizeWebsiteUrl(websiteInput);
 
   if (!companyVal) {
     showToast('Company Name is required', 'error');
     return;
   }
 
-  if (emailVal && !document.getElementById('email')?.checkValidity()) {
-    showToast('Enter a valid company email address.', 'error');
+  if (websiteInput?.trim() && !websiteUrl) {
+    showToast('Enter a valid website link.', 'error');
     return;
   }
 
@@ -1338,7 +1356,7 @@ async function saveCall(e) {
     outcome: document.getElementById('outcome')?.value || 'interested',
     report: reportVal || 'No report summary provided',
     callNotes: reportVal || '',
-    email: emailVal || '',
+    websiteUrl: websiteUrl || '',
     businessDetails: businessVal || ''
   };
   
@@ -1368,7 +1386,7 @@ async function saveCall(e) {
             p_company_name: callRecord.company_name,
             p_contact_person: callRecord.contact_person,
             p_phone: callRecord.phone,
-            p_email: callRecord.email,
+            p_website_url: callRecord.website_url,
             p_priority: callRecord.priority,
             p_outcome: callRecord.outcome,
             p_report: callRecord.report,
@@ -1457,7 +1475,12 @@ function viewCallDetail(id) {
   setText('detailCompany', call.companyName);
   setText('detailContact', call.contactPerson);
   setText('detailPhone', call.phone);
-  setText('detailEmail', call.email);
+  const websiteEl = document.getElementById('detailWebsite');
+  if (websiteEl) {
+    websiteEl.innerHTML = call.websiteUrl
+      ? `<a href="${escapeHtml(call.websiteUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(call.websiteUrl)}</a>`
+      : '—';
+  }
   setText('detailDateTime', formatDateTime(call.dateTime));
   
   const pEl = document.getElementById('detailPriority');

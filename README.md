@@ -38,6 +38,10 @@ CRM records belong to one shared workspace. Approved members use separate
 accounts but can view, add, edit, and delete the same call records. Creating an
 account does not automatically grant access to the shared workspace.
 
+The Call Queue is also shared across workspace members. It stores a company,
+phone number, short website note, and low/medium/high priority in a compact
+table. Starting a queued call pre-fills the existing call form.
+
 For production authentication, add the production Vercel domain to:
 
 `Supabase Dashboard → Authentication → URL Configuration`
@@ -49,6 +53,10 @@ The database migration is stored in:
 `supabase/migrations/20260729130000_secure_user_scoped_calls.sql`
 
 `supabase/migrations/20260731123000_add_shared_workspace.sql`
+
+`supabase/migrations/20260801092123_add_call_queue.sql`
+
+`supabase/migrations/20260801092347_index_call_queue_user.sql`
 
 The migrations align the `calls` table with the frontend, enable row-level
 security, and restrict the shared CRM workspace to approved members.

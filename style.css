@@ -805,6 +805,86 @@ tbody tr:nth-child(even) {
   background-color: rgba(255,77,106,0.08);
 }
 
+/* Call Queue */
+.queue-section {
+  min-height: 360px;
+}
+
+.queue-header {
+  padding: 22px 24px;
+}
+
+.queue-table {
+  table-layout: fixed;
+  min-width: 760px;
+}
+
+.queue-table th:nth-child(1) { width: 14%; }
+.queue-table th:nth-child(2) { width: 25%; }
+.queue-table th:nth-child(3) { width: 20%; }
+.queue-table th:nth-child(4) { width: 41%; }
+
+.queue-table th {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.8rem;
+}
+
+.queue-table td {
+  height: 64px;
+}
+
+.queue-company-name {
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.queue-phone {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.queue-note-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.queue-note {
+  min-width: 0;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  opacity: 0.72;
+  transition: opacity var(--transition-fast);
+}
+
+.queue-table tr:hover .queue-row-actions {
+  opacity: 1;
+}
+
+.queue-call-btn:hover {
+  border-color: var(--priority-low);
+  color: var(--priority-low);
+  background-color: rgba(0,196,140,0.08);
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 54px 20px !important;
+}
+
 /* 7. Pagination */
 .table-footer {
   display: flex;
@@ -1002,6 +1082,78 @@ tbody tr:nth-child(even) {
   gap: 12px;
   padding: 20px 28px;
   border-top: 1px solid var(--border-color);
+}
+
+.queue-modal {
+  max-width: 620px;
+}
+
+.priority-picker {
+  border: 0;
+  padding: 0;
+  margin: 4px 0 0;
+}
+
+.priority-picker legend {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.priority-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.priority-option {
+  cursor: pointer;
+}
+
+.priority-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.priority-option span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  font-size: 0.875rem;
+  font-weight: 650;
+  transition: all var(--transition-fast);
+}
+
+.priority-option input:focus-visible + span {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.priority-option.low input:checked + span {
+  color: var(--priority-low);
+  border-color: var(--priority-low);
+  background: rgba(0,196,140,0.12);
+}
+
+.priority-option.medium input:checked + span {
+  color: var(--priority-medium);
+  border-color: var(--priority-medium);
+  background: rgba(255,185,70,0.12);
+}
+
+.priority-option.high input:checked + span {
+  color: var(--priority-high);
+  border-color: var(--priority-high);
+  background: rgba(255,107,53,0.12);
 }
 
 /* 9. Call Detail Modal */
@@ -1448,6 +1600,11 @@ td:nth-child(6) {
   th:nth-child(5), td:nth-child(5) {
     display: none;
   }
+
+  .queue-table th,
+  .queue-table td {
+    display: table-cell !important;
+  }
   
   .detail-grid {
     grid-template-columns: 1fr;
@@ -1490,6 +1647,15 @@ td:nth-child(6) {
   
   th:nth-child(3), td:nth-child(3) {
     display: none;
+  }
+
+  .queue-table th,
+  .queue-table td {
+    display: table-cell !important;
+  }
+
+  .priority-options {
+    grid-template-columns: 1fr;
   }
 }
 

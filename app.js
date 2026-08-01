@@ -5,6 +5,7 @@
 // --- State Management ---
 const state = {
   calls: [],
+  queue: [],
   currentView: 'dashboard',
   callLogPage: 1,
   callLogPerPage: 8,
@@ -18,6 +19,7 @@ const state = {
   },
   editingCallId: null,
   pendingDeleteId: null,
+  pendingDeleteType: null,
   currentUser: null,
   charts: {}
 };
@@ -228,6 +230,7 @@ function setupAuth() {
         if (error) return showToast(error.message, 'error');
         state.currentUser = null;
         state.calls = [];
+        state.queue = [];
         renderAll();
         await checkAuth();
       }
@@ -238,6 +241,7 @@ function setupAuth() {
     if (event === 'SIGNED_OUT') {
       state.currentUser = null;
       state.calls = [];
+      state.queue = [];
       renderAll();
       document.getElementById('authOverlay')?.classList.add('active');
     } else if (session) {
@@ -281,6 +285,34 @@ async function loadData() {
   }
 
   state.calls = (data || []).map(fromDatabaseCall);
+}
+
+async function loadQueue() {
+  if (!supabaseClient || !state.currentUser) {
+    state.queue = [];
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from('call_queue')
+    .select('id, user_id, company_name, phone, note, priority, created_at')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    showToast(`Could not load call queue: ${error.message}`, 'error');
+    state.queue = [];
+    return;
+  }
+
+  state.queue = (data || []).map(row => ({
+    id: row.id,
+    userId: row.user_id,
+    companyName: row.company_name,
+    phone: row.phone,
+    note: row.note,
+    priority: row.priority,
+    createdAt: row.created_at
+  }));
 }
 
 function fromDatabaseCall(row) {
@@ -344,11 +376,12 @@ async function activateAuthenticatedApp() {
     return;
   }
 
-  await loadData();
+  await Promise.all([loadData(), loadQueue()]);
   renderAll();
 }
 
 function renderAll() {
+  renderQueue();
   updateKPIs();
   updateCharts();
   renderRecentCalls();
@@ -381,7 +414,7 @@ function switchView(viewName) {
   });
 
   // Update views — map data-view names to DOM IDs
-  const viewMap = { dashboard: 'dashboardView', calllog: 'callLogView', analytics: 'analyticsView' };
+  const viewMap = { queue: 'callQueueView', dashboard: 'dashboardView', calllog: 'callLogView', analytics: 'analyticsView' };
   Object.entries(viewMap).forEach(([name, id]) => {
     const el = document.getElementById(id);
     if (el) {
@@ -390,12 +423,14 @@ function switchView(viewName) {
   });
 
   // Update page title
-  const titles = { dashboard: 'Dashboard', calllog: 'Call Log', analytics: 'Analytics' };
+  const titles = { queue: 'Call Queue', dashboard: 'Dashboard', calllog: 'Call Log', analytics: 'Analytics' };
   const titleEl = document.getElementById('pageTitle');
   if (titleEl) titleEl.textContent = titles[viewName] || 'Dashboard';
 
   // Re-render specific view components
-  if (viewName === 'dashboard') {
+  if (viewName === 'queue') {
+    renderQueue();
+  } else if (viewName === 'dashboard') {
     updateKPIs();
     updateCharts();
     renderRecentCalls();
@@ -431,7 +466,7 @@ function setupSidebarToggle() {
   const refreshBtn = document.getElementById('refreshBtn');
   if (refreshBtn) {
     refreshBtn.addEventListener('click', async () => {
-      await loadData();
+      await Promise.all([loadData(), loadQueue()]);
       renderAll();
       showToast('Data refreshed', 'success');
     });
@@ -745,6 +780,56 @@ function getPriorityClass(p) {
   }
 }
 
+function renderQueue() {
+  const tbody = document.getElementById('queueTableBody');
+  const summary = document.getElementById('queueSummary');
+  if (!tbody) return;
+
+  const priorityOrder = { high: 0, medium: 1, low: 2 };
+  const items = [...state.queue].sort((a, b) => {
+    const priorityDifference = priorityOrder[a.priority] - priorityOrder[b.priority];
+    if (priorityDifference !== 0) return priorityDifference;
+    return new Date(a.createdAt) - new Date(b.createdAt);
+  });
+
+  const highPriorityCount = items.filter(item => item.priority === 'high').length;
+  if (summary) {
+    const companyLabel = items.length === 1 ? 'company' : 'companies';
+    summary.textContent = `${items.length} ${companyLabel} waiting${highPriorityCount ? ` · ${highPriorityCount} high priority` : ''}`;
+  }
+
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No calls queued yet. Add a company when you are ready.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = items.map(item => `
+    <tr data-queue-id="${escapeHtml(item.id)}">
+      <td><span class="${getPriorityClass(item.priority)}">${escapeHtml(item.priority)}</span></td>
+      <td><span class="queue-company-name">${escapeHtml(item.companyName)}</span></td>
+      <td><span class="queue-phone">${escapeHtml(item.phone)}</span></td>
+      <td>
+        <div class="queue-note-cell">
+          <span class="queue-note" title="${escapeHtml(item.note)}">${escapeHtml(item.note)}</span>
+          <div class="queue-row-actions">
+            <button class="action-btn queue-call-btn" type="button" data-queue-action="start" data-id="${escapeHtml(item.id)}" title="Start this call" aria-label="Start call with ${escapeHtml(item.companyName)}">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+            </button>
+            <button class="action-btn delete" type="button" data-queue-action="delete" data-id="${escapeHtml(item.id)}" title="Remove from queue" aria-label="Remove ${escapeHtml(item.companyName)} from queue">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
 function getOutcomeClass(o) {
   switch(o) {
     case 'interested': return 'status-badge interested';
@@ -940,7 +1025,11 @@ function setupEventListeners() {
   const addBtn = document.getElementById('addCallBtn');
   if (addBtn) addBtn.addEventListener('click', openAddModal);
 
+  document.getElementById('addQueueBtn')?.addEventListener('click', openQueueModal);
+
   // Modals
+  document.getElementById('closeQueueModal')?.addEventListener('click', closeModals);
+  document.getElementById('cancelQueueModal')?.addEventListener('click', closeModals);
   document.getElementById('closeModal')?.addEventListener('click', closeModals);
   document.getElementById('cancelModal')?.addEventListener('click', closeModals);
   document.getElementById('closeDetail')?.addEventListener('click', closeModals);
@@ -963,6 +1052,18 @@ function setupEventListeners() {
   // Form Submit
   const form = document.getElementById('callForm');
   if (form) form.addEventListener('submit', saveCall);
+
+  document.getElementById('queueForm')?.addEventListener('submit', saveQueuedCall);
+
+  document.body.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-queue-action]');
+    if (!btn) return;
+
+    const action = btn.getAttribute('data-queue-action');
+    const id = btn.getAttribute('data-id');
+    if (action === 'start') startQueuedCall(id);
+    else if (action === 'delete') deleteQueuedCall(id);
+  });
 
   // Table Actions using Event Delegation
   document.body.addEventListener('click', (e) => {
@@ -1061,6 +1162,90 @@ function handleFilterChange() {
 }
 
 // --- CRUD Operations ---
+
+function openQueueModal() {
+  const form = document.getElementById('queueForm');
+  if (form) form.reset();
+  document.getElementById('queueModal')?.classList.add('active');
+}
+
+async function saveQueuedCall(e) {
+  e.preventDefault();
+  if (!supabaseClient || !state.currentUser) {
+    showToast('Please sign in before adding to the queue.', 'error');
+    return;
+  }
+
+  const companyName = document.getElementById('queueCompany')?.value?.trim();
+  const phone = document.getElementById('queuePhone')?.value?.trim();
+  const note = document.getElementById('queueNote')?.value?.trim();
+  const priority = document.querySelector('input[name="queuePriority"]:checked')?.value || 'medium';
+
+  if (!companyName || !phone || !note) {
+    showToast('Company, phone number, and note are required.', 'error');
+    return;
+  }
+
+  const saveButton = document.getElementById('saveQueueBtn');
+  saveButton.disabled = true;
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('call_queue')
+      .insert({
+        user_id: state.currentUser.id,
+        company_name: companyName,
+        phone,
+        note,
+        priority
+      })
+      .select('id, user_id, company_name, phone, note, priority, created_at')
+      .single();
+
+    if (error) throw error;
+
+    state.queue.push({
+      id: data.id,
+      userId: data.user_id,
+      companyName: data.company_name,
+      phone: data.phone,
+      note: data.note,
+      priority: data.priority,
+      createdAt: data.created_at
+    });
+
+    closeModals();
+    switchView('queue');
+    renderQueue();
+    showToast(`Added ${companyName} to the call queue`, 'success');
+  } catch (error) {
+    showToast(`Could not add to queue: ${error.message}`, 'error');
+  } finally {
+    saveButton.disabled = false;
+  }
+}
+
+function startQueuedCall(id) {
+  const item = state.queue.find(queueItem => queueItem.id === id);
+  if (!item) return;
+
+  openAddModal();
+  document.getElementById('companyName').value = item.companyName;
+  document.getElementById('phone').value = item.phone;
+  document.getElementById('priority').value = item.priority;
+  document.getElementById('businessDetails').value = `Website issue: ${item.note}`;
+}
+
+function deleteQueuedCall(id) {
+  const item = state.queue.find(queueItem => queueItem.id === id);
+  if (!item) return;
+
+  state.pendingDeleteId = id;
+  state.pendingDeleteType = 'queue';
+  const confirmText = document.getElementById('confirmText');
+  if (confirmText) confirmText.textContent = `Remove ${item.companyName} from the call queue?`;
+  document.getElementById('confirmModal')?.classList.add('active');
+}
 
 function openAddModal() {
   state.editingCallId = null;
@@ -1171,6 +1356,9 @@ async function saveCall(e) {
 
 function deleteCall(id) {
   state.pendingDeleteId = id;
+  state.pendingDeleteType = 'call';
+  const confirmText = document.getElementById('confirmText');
+  if (confirmText) confirmText.textContent = 'Are you sure you want to delete this call record? This action cannot be undone.';
   document.getElementById('detailModal')?.classList.remove('active');
   document.getElementById('confirmModal')?.classList.add('active');
 }
@@ -1182,6 +1370,20 @@ async function confirmDeleteCall() {
   const confirmButton = document.getElementById('confirmDelete');
   confirmButton.disabled = true;
   try {
+    if (state.pendingDeleteType === 'queue') {
+      const { error } = await supabaseClient
+        .from('call_queue')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+
+      state.queue = state.queue.filter(item => item.id !== id);
+      showToast('Removed from call queue', 'success');
+      closeModals();
+      renderQueue();
+      return;
+    }
+
     const { error } = await supabaseClient
       .from('calls')
       .delete()
@@ -1248,6 +1450,7 @@ function closeModals() {
   document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
   state.editingCallId = null;
   state.pendingDeleteId = null;
+  state.pendingDeleteType = null;
 }
 
 function updateAnalyticsKPIs() {

@@ -816,13 +816,14 @@ tbody tr:nth-child(even) {
 
 .queue-table {
   table-layout: fixed;
-  min-width: 760px;
+  min-width: 940px;
 }
 
-.queue-table th:nth-child(1) { width: 14%; }
-.queue-table th:nth-child(2) { width: 25%; }
-.queue-table th:nth-child(3) { width: 20%; }
-.queue-table th:nth-child(4) { width: 41%; }
+.queue-table th:nth-child(1) { width: 12%; }
+.queue-table th:nth-child(2) { width: 21%; }
+.queue-table th:nth-child(3) { width: 17%; }
+.queue-table th:nth-child(4) { width: 21%; }
+.queue-table th:nth-child(5) { width: 29%; }
 
 .queue-table th {
   text-transform: none;
@@ -841,6 +842,14 @@ tbody tr:nth-child(even) {
 
 .queue-phone {
   color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.queue-email {
+  display: block;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

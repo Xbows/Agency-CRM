@@ -58,6 +58,8 @@ The database migration is stored in:
 
 `supabase/migrations/20260801092347_index_call_queue_user.sql`
 
+`supabase/migrations/20260801104000_add_queue_email_and_completion.sql`
+
 The migrations align the `calls` table with the frontend, enable row-level
 security, and restrict the shared CRM workspace to approved members.
 

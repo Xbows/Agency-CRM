@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./style.css?v=10">
+  <link rel="stylesheet" href="./style.css?v=11">
 </head>
 <body>
   <!-- ============================================ -->
@@ -193,12 +193,13 @@
                 <th>Priority</th>
                 <th>Company</th>
                 <th>Phone Number</th>
+                <th>Email</th>
                 <th>Note</th>
               </tr>
             </thead>
             <tbody id="queueTableBody">
               <tr>
-                <td colspan="4" class="empty-state">No calls queued yet.</td>
+                <td colspan="5" class="empty-state">No calls queued yet.</td>
               </tr>
             </tbody>
           </table>
@@ -522,6 +523,12 @@
           </div>
           <div class="form-row full">
             <div class="form-group">
+              <label for="queueEmail">Company Email</label>
+              <input type="email" id="queueEmail" placeholder="e.g. hello@company.com" maxlength="254">
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
               <label for="queueNote">Small Note <span class="required">*</span></label>
               <textarea id="queueNote" placeholder="What is wrong with their website?" maxlength="500" required></textarea>
             </div>
@@ -588,6 +595,13 @@
               <label for="phone">Phone Number</label>
               <input type="tel" id="phone" placeholder="e.g. +1 (555) 123-4567">
             </div>
+            <div class="form-group">
+              <label for="email">Company Email</label>
+              <input type="email" id="email" placeholder="e.g. hello@company.com" maxlength="254">
+            </div>
+          </div>
+
+          <div class="form-row">
             <div class="form-group">
               <label for="priority">Priority <span class="required">*</span></label>
               <select id="priority" required>
@@ -756,7 +770,7 @@
   <!-- SCRIPTS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-  <script src="app.js?v=16"></script>
+  <script src="app.js?v=17"></script>
 
 </body>
 </html>

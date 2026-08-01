@@ -18,6 +18,7 @@ const state = {
     search: ''
   },
   editingCallId: null,
+  activeQueueItemId: null,
   pendingDeleteId: null,
   pendingDeleteType: null,
   currentUser: null,
@@ -231,6 +232,7 @@ function setupAuth() {
         state.currentUser = null;
         state.calls = [];
         state.queue = [];
+        state.activeQueueItemId = null;
         renderAll();
         await checkAuth();
       }
@@ -242,6 +244,7 @@ function setupAuth() {
       state.currentUser = null;
       state.calls = [];
       state.queue = [];
+      state.activeQueueItemId = null;
       renderAll();
       document.getElementById('authOverlay')?.classList.add('active');
     } else if (session) {
@@ -295,7 +298,7 @@ async function loadQueue() {
 
   const { data, error } = await supabaseClient
     .from('call_queue')
-    .select('id, user_id, company_name, phone, note, priority, created_at')
+    .select('id, user_id, company_name, phone, email, note, priority, created_at')
     .order('created_at', { ascending: true });
 
   if (error) {
@@ -309,6 +312,7 @@ async function loadQueue() {
     userId: row.user_id,
     companyName: row.company_name,
     phone: row.phone,
+    email: row.email,
     note: row.note,
     priority: row.priority,
     createdAt: row.created_at
@@ -799,7 +803,7 @@ function renderQueue() {
   }
 
   if (!items.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No calls queued yet. Add a company when you are ready.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No calls queued yet. Add a company when you are ready.</td></tr>';
     return;
   }
 
@@ -808,6 +812,7 @@ function renderQueue() {
       <td><span class="${getPriorityClass(item.priority)}">${escapeHtml(item.priority)}</span></td>
       <td><span class="queue-company-name">${escapeHtml(item.companyName)}</span></td>
       <td><span class="queue-phone">${escapeHtml(item.phone)}</span></td>
+      <td><span class="queue-email" title="${escapeHtml(item.email || '')}">${escapeHtml(item.email || '—')}</span></td>
       <td>
         <div class="queue-note-cell">
           <span class="queue-note" title="${escapeHtml(item.note)}">${escapeHtml(item.note)}</span>
@@ -1178,11 +1183,17 @@ async function saveQueuedCall(e) {
 
   const companyName = document.getElementById('queueCompany')?.value?.trim();
   const phone = document.getElementById('queuePhone')?.value?.trim();
+  const email = document.getElementById('queueEmail')?.value?.trim();
   const note = document.getElementById('queueNote')?.value?.trim();
   const priority = document.querySelector('input[name="queuePriority"]:checked')?.value || 'medium';
 
   if (!companyName || !phone || !note) {
     showToast('Company, phone number, and note are required.', 'error');
+    return;
+  }
+
+  if (email && !document.getElementById('queueEmail')?.checkValidity()) {
+    showToast('Enter a valid company email address.', 'error');
     return;
   }
 
@@ -1196,10 +1207,11 @@ async function saveQueuedCall(e) {
         user_id: state.currentUser.id,
         company_name: companyName,
         phone,
+        email: email || null,
         note,
         priority
       })
-      .select('id, user_id, company_name, phone, note, priority, created_at')
+      .select('id, user_id, company_name, phone, email, note, priority, created_at')
       .single();
 
     if (error) throw error;
@@ -1209,6 +1221,7 @@ async function saveQueuedCall(e) {
       userId: data.user_id,
       companyName: data.company_name,
       phone: data.phone,
+      email: data.email,
       note: data.note,
       priority: data.priority,
       createdAt: data.created_at
@@ -1230,8 +1243,10 @@ function startQueuedCall(id) {
   if (!item) return;
 
   openAddModal();
+  state.activeQueueItemId = id;
   document.getElementById('companyName').value = item.companyName;
   document.getElementById('phone').value = item.phone;
+  document.getElementById('email').value = item.email || '';
   document.getElementById('priority').value = item.priority;
   document.getElementById('businessDetails').value = `Website issue: ${item.note}`;
 }
@@ -1249,6 +1264,7 @@ function deleteQueuedCall(id) {
 
 function openAddModal() {
   state.editingCallId = null;
+  state.activeQueueItemId = null;
   const form = document.getElementById('callForm');
   if (form) form.reset();
   
@@ -1264,6 +1280,7 @@ function openEditModal(id) {
   if (!call) return;
   
   state.editingCallId = id;
+  state.activeQueueItemId = null;
   
   const title = document.getElementById('modalTitle');
   if (title) title.textContent = 'Edit Call';
@@ -1272,6 +1289,7 @@ function openEditModal(id) {
   if (document.getElementById('companyName')) document.getElementById('companyName').value = call.companyName || '';
   if (document.getElementById('contactPerson')) document.getElementById('contactPerson').value = (call.contactPerson && call.contactPerson !== '—') ? call.contactPerson : '';
   if (document.getElementById('phone')) document.getElementById('phone').value = (call.phone && call.phone !== '—') ? call.phone : '';
+  if (document.getElementById('email')) document.getElementById('email').value = call.email || '';
   if (document.getElementById('priority')) document.getElementById('priority').value = call.priority || 'medium';
   if (document.getElementById('outcome')) document.getElementById('outcome').value = call.outcome || 'interested';
   if (document.getElementById('report')) document.getElementById('report').value = call.report || call.callNotes || '';
@@ -1290,14 +1308,22 @@ async function saveCall(e) {
     showToast('Please sign in before saving a call.', 'error');
     return;
   }
+
+  const wasEditing = Boolean(state.editingCallId);
   
   const companyVal = document.getElementById('companyName')?.value?.trim();
   const reportVal = document.getElementById('report')?.value?.trim();
   const phoneVal = document.getElementById('phone')?.value?.trim();
   const businessVal = document.getElementById('businessDetails')?.value?.trim();
+  const emailVal = document.getElementById('email')?.value?.trim();
 
   if (!companyVal) {
     showToast('Company Name is required', 'error');
+    return;
+  }
+
+  if (emailVal && !document.getElementById('email')?.checkValidity()) {
+    showToast('Enter a valid company email address.', 'error');
     return;
   }
 
@@ -1312,7 +1338,7 @@ async function saveCall(e) {
     outcome: document.getElementById('outcome')?.value || 'interested',
     report: reportVal || 'No report summary provided',
     callNotes: reportVal || '',
-    email: '',
+    email: emailVal || '',
     businessDetails: businessVal || ''
   };
   
@@ -1333,20 +1359,38 @@ async function saveCall(e) {
       if (idx !== -1) state.calls[idx] = fromDatabaseCall(data);
       showToast('Call log updated successfully!', 'success');
     } else {
-      const { data, error } = await supabaseClient
-        .from('calls')
-        .insert(toDatabaseCall(formData))
-        .select()
-        .single();
+      const queueItemId = state.activeQueueItemId;
+      const callRecord = toDatabaseCall(formData);
+      const request = queueItemId
+        ? supabaseClient.rpc('complete_queued_call', {
+            p_queue_id: queueItemId,
+            p_called_at: callRecord.called_at,
+            p_company_name: callRecord.company_name,
+            p_contact_person: callRecord.contact_person,
+            p_phone: callRecord.phone,
+            p_email: callRecord.email,
+            p_priority: callRecord.priority,
+            p_outcome: callRecord.outcome,
+            p_report: callRecord.report,
+            p_business_details: callRecord.business_details
+          })
+        : supabaseClient.from('calls').insert(callRecord).select();
+
+      const { data: savedRows, error } = await request;
       if (error) throw error;
+
+      const data = Array.isArray(savedRows) ? savedRows[0] : savedRows;
+      if (!data) throw new Error('The call could not be saved. Please try again.');
 
       const newCall = fromDatabaseCall(data);
       state.calls.unshift(newCall);
+      if (queueItemId) state.queue = state.queue.filter(item => item.id !== queueItemId);
       showToast(`Logged call for "${newCall.companyName}" successfully!`, 'success');
     }
 
     closeModals();
     renderAll();
+    if (!wasEditing) switchView('dashboard');
   } catch (error) {
     showToast(`Could not save call: ${error.message}`, 'error');
   } finally {
@@ -1449,6 +1493,7 @@ function viewCallDetail(id) {
 function closeModals() {
   document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
   state.editingCallId = null;
+  state.activeQueueItemId = null;
   state.pendingDeleteId = null;
   state.pendingDeleteType = null;
 }
